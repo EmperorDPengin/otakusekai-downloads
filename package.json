@@ -1,7 +1,7 @@
 {
   "name": "otakusekai-desktop",
   "productName": "OtakuSekai",
-  "version": "0.31.0",
+  "version": "0.31.1",
   "description": "OtakuSekai for Windows, macOS and Linux",
   "main": "src/main.cjs",
   "private": true,
@@ -56,6 +56,7 @@
       ],
       "category": "Game",
       "icon": "resources/icon.png"
-    }
+    },
+    "afterPack": "scripts/adhoc-sign.cjs"
   }
 }
