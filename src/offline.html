@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OtakuSekai</title>
+    <style>
+      html,body{height:100%;margin:0;background:#070d14;color:#fff;font-family:system-ui,Segoe UI,Arial,sans-serif}
+      body{display:grid;place-items:center;text-align:center}
+      .card{max-width:420px;padding:32px;border:3px solid #0b0b14;background:#101a2c;box-shadow:8px 8px 0 #a80f2c}
+      h1{margin:0 0 8px;font-size:1.6rem;font-style:italic;letter-spacing:.04em}
+      p{margin:0 0 20px;color:#b8c4d8;line-height:1.5}
+      button{font:inherit;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:12px 28px;border:2px solid #0b0b14;background:#ff2a55;color:#fff;cursor:pointer;transform:skewX(-8deg);box-shadow:4px 4px 0 #0b0b14}
+      button:active{transform:skewX(-8deg) translate(2px,2px);box-shadow:2px 2px 0 #0b0b14}
+      button span{display:inline-block;transform:skewX(8deg)}
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Can't reach the game</h1>
+      <p>Check your internet connection. OtakuSekai is an online game, so it needs to be connected. We'll keep trying.</p>
+      <button id="retry"><span>Retry</span></button>
+    </div>
+    <script>
+      const target = new URLSearchParams(location.search).get("retry") || "https://play.otakuswonderland.com";
+      const go = () => { location.href = target; };
+      document.getElementById("retry").onclick = go;
+      // quietly try again every 8 seconds, so the game comes back by itself when the connection does
+      setInterval(() => fetch(target, { mode: "no-cors", cache: "no-store" }).then(go).catch(() => {}), 8000);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,59 @@
+name: Build and release
+# Builds the Windows, Mac and Linux launcher and publishes it as a release. Runs when the version in package.json changes (or by hand from the Actions tab).
+on:
+  push:
+    branches: [main]
+    paths: ["package.json", "src/**", "resources/**"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      exists: ${{ steps.v.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          V=$(node -p "require('./package.json').version")
+          echo "version=$V" >> $GITHUB_OUTPUT
+          if gh release view "v$V" >/dev/null 2>&1; then echo "exists=true" >> $GITHUB_OUTPUT; else echo "exists=false" >> $GITHUB_OUTPUT; fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+  build:
+    needs: version
+    if: ${{ needs.version.outputs.exists == 'false' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, script: "dist:win", name: windows }
+          - { os: macos-14, script: "dist:mac", name: mac }
+          - { os: ubuntu-latest, script: "dist:linux", name: linux }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run ${{ matrix.script }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.name }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.AppImage
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: files, merge-multiple: true }
+      - run: gh release create "v${{ needs.version.outputs.version }}" files/* --repo "${{ github.repository }}" --title "OtakuSekai ${{ needs.version.outputs.version }}" --notes "Desktop launcher for Windows, Mac and Linux. It opens the live game, so the game updates itself."
+        env:
+          GH_TOKEN: ${{ github.token }}

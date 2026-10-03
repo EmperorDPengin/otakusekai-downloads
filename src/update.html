@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OtakuSekai</title>
+    <style>
+      html,body{height:100%;margin:0;background:#070d14;color:#fff;font-family:system-ui,Segoe UI,Arial,sans-serif}
+      body{display:grid;place-items:center;text-align:center}
+      .card{max-width:440px;padding:32px;border:3px solid #0b0b14;background:#101a2c;box-shadow:8px 8px 0 #a80f2c}
+      h1{margin:0 0 8px;font-size:1.6rem;font-style:italic}
+      p{margin:0 0 20px;color:#b8c4d8;line-height:1.5}
+      a{display:inline-block;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:12px 28px;border:2px solid #0b0b14;background:#ff2a55;color:#fff;text-decoration:none;box-shadow:4px 4px 0 #0b0b14}
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>A new version is out</h1>
+      <p>This copy of OtakuSekai is too old to keep playing. Download the new version (it takes a minute), install it over this one, and you're back in.</p>
+      <a id="dl" href="#" target="_blank" rel="noopener">Download</a>
+    </div>
+    <script>
+      const u = new URLSearchParams(location.search).get("download") || "https://play.otakuswonderland.com/download";
+      document.getElementById("dl").href = /^https:\/\//.test(u) ? u : "https://play.otakuswonderland.com/download";
+    </script>
+  </body>
+</html>

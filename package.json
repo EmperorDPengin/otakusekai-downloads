@@ -1,0 +1,61 @@
+{
+  "name": "otakusekai-desktop",
+  "productName": "OtakuSekai",
+  "version": "0.30.0",
+  "description": "OtakuSekai for Windows, macOS and Linux",
+  "main": "src/main.cjs",
+  "private": true,
+  "author": "OtakuSekai",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:linux": "electron-builder --linux --publish never",
+    "dist:win:local": "electron-builder --win --publish never --config.win.signAndEditExecutable=false"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.otakuswonderland.otakusekai",
+    "productName": "OtakuSekai",
+    "directories": {
+      "output": "dist",
+      "buildResources": "resources"
+    },
+    "files": [
+      "src/**/*",
+      "resources/icon.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "resources/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.card-games",
+      "icon": "resources/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Game",
+      "icon": "resources/icon.png"
+    }
+  }
+}
