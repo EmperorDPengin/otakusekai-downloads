@@ -2,7 +2,7 @@
 // This is a LAUNCHER: it opens the live game, so every game update reaches players the moment you deploy it, with nothing to download.
 // The only thing that is ever installed again is this small launcher, and only when it becomes too old: at start-up it asks the server which launcher
 // version is still allowed (/desktop-version) and, if this one is older, shows an "update needed" screen with a download button.
-const { app, BrowserWindow, shell, Menu, dialog } = require("electron");
+const { app, BrowserWindow, shell, Menu, Tray, dialog, ipcMain, nativeImage } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -61,6 +61,28 @@ async function updateNeeded() {
 }
 
 let win = null;
+let tray = null;
+let quitting = false;
+
+function showWindow() {
+  if (!win) return void createWindow();
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+
+/** The icon by the clock: with notifications on, closing the window leaves the launcher running here so notifications keep arriving. */
+function ensureTray() {
+  if (tray) return;
+  try {
+    tray = new Tray(nativeImage.createFromPath(path.join(__dirname, "..", "resources", "icon.png")).resize({ width: 20, height: 20 }));
+    tray.setToolTip("OtakuSekai");
+    tray.setContextMenu(Menu.buildFromTemplate([{ label: "Open OtakuSekai", click: showWindow }, { label: "Quit", click: () => { quitting = true; app.quit(); } }]));
+    tray.on("click", showWindow);
+  } catch {
+    tray = null;
+  }
+}
 
 async function createWindow() {
   const s = loadState();
@@ -78,6 +100,8 @@ async function createWindow() {
     autoHideMenuBar: true,
     fullscreenable: true,
     webPreferences: {
+      preload: path.join(__dirname, "preload.cjs"),
+      backgroundThrottling: false, // keep checking for notifications while minimised
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -116,7 +140,10 @@ async function createWindow() {
   // F11 / Alt+Enter: fullscreen. Ctrl+R: reload. F12: dev tools (dev run only).
   win.webContents.on("before-input-event", (e, input) => {
     if (input.type !== "keyDown") return;
-    if (input.key === "F11" || (input.alt && input.key === "Enter")) {
+    if (input.key === "Escape" && win.isFullScreen()) {
+      win.setFullScreen(false);
+      e.preventDefault();
+    } else if (input.key === "F11" || (input.alt && input.key === "Enter")) {
       win.setFullScreen(!win.isFullScreen());
       e.preventDefault();
     } else if (input.control && input.key.toLowerCase() === "r") {
@@ -127,7 +154,27 @@ async function createWindow() {
     }
   });
 
-  win.on("close", () => saveState(win));
+  // Closing the window: with notifications on (the game page remembers that), keep running in the tray; otherwise quit as usual.
+  win.on("close", (e) => {
+    if (quitting) return saveState(win);
+    e.preventDefault();
+    win.webContents
+      .executeJavaScript("localStorage.getItem(\"ftcg.desktopNotify\") === \"1\" && localStorage.getItem(\"ftcg.desktopTray\") === \"1\"")
+      .then((v) => {
+        if (v === true) {
+          saveState(win);
+          ensureTray();
+          win.hide();
+        } else {
+          quitting = true;
+          app.quit();
+        }
+      })
+      .catch(() => {
+        quitting = true;
+        app.quit();
+      });
+  });
   win.on("closed", () => (win = null));
 
   const old = await updateNeeded();
@@ -148,10 +195,25 @@ function openExternalSafe(url) {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on("second-instance", () => {
-    if (win) {
-      if (win.isMinimized()) win.restore();
-      win.focus();
+  app.on("second-instance", () => showWindow());
+  app.on("before-quit", () => {
+    quitting = true;
+  });
+  ipcMain.on("desktop:quit", (e) => {
+    try {
+      if (new URL(e.senderFrame.url).origin === GAME_ORIGIN) {
+        quitting = true;
+        app.quit();
+      }
+    } catch {
+      /* ignore */
+    }
+  });
+  ipcMain.on("desktop:show", (e) => {
+    try {
+      if (new URL(e.senderFrame.url).origin === GAME_ORIGIN) showWindow();
+    } catch {
+      /* ignore */
     }
   });
   app.whenReady().then(() => {
@@ -161,7 +223,7 @@ if (!app.requestSingleInstanceLock()) {
     });
   });
   app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") app.quit();
+    if (process.platform !== "darwin" && quitting) app.quit();
   });
 }
 
