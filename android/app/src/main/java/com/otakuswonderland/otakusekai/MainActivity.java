@@ -36,7 +36,9 @@ public class MainActivity extends LauncherActivity {
         try {
             PackageInfo info = getPackageManager().getPackageInfo(CHROME, 0);
             if (info.applicationInfo == null || !info.applicationInfo.enabled || info.versionName == null) return false;
-            return Integer.parseInt(info.versionName.split("\.")[0]) >= MIN_CHROME_MAJOR;
+            String v = info.versionName;
+            int dot = v.indexOf(46); // "."
+            return Integer.parseInt(dot < 0 ? v : v.substring(0, dot)) >= MIN_CHROME_MAJOR;
         } catch (Exception e) {
             return false; // not installed, disabled or unreadable
         }
