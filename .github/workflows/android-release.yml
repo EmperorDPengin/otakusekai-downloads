@@ -1,0 +1,43 @@
+name: Build Android APK
+# Copy this file to .github/workflows/android-release.yml in the otakusekai-downloads repository, next to the android/ folder.
+# Builds and signs the Android app and publishes it as its own release "android-vX.Y.Z" (the desktop releases are untouched).
+# Runs when APP_VERSION_NAME in android/gradle.properties is raised (or by hand from the Actions tab).
+# Secrets needed on that repository: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS.
+on:
+  push:
+    branches: [main]
+    paths: ["android/**"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          V=$(grep '^APP_VERSION_NAME=' android/gradle.properties | cut -d= -f2)
+          echo "version=$V" >> $GITHUB_OUTPUT
+          if gh release view "android-v$V" >/dev/null 2>&1; then echo "exists=true" >> $GITHUB_OUTPUT; else echo "exists=false" >> $GITHUB_OUTPUT; fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - if: steps.v.outputs.exists == 'false'
+        uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - if: steps.v.outputs.exists == 'false'
+        uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: "8.7" }
+      - if: steps.v.outputs.exists == 'false'
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
+          cd android && gradle --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "../OtakuSekai-${{ steps.v.outputs.version }}.apk"
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      - if: steps.v.outputs.exists == 'false'
+        run: gh release create "android-v${{ steps.v.outputs.version }}" "OtakuSekai-${{ steps.v.outputs.version }}.apk" --title "OtakuSekai for Android ${{ steps.v.outputs.version }}" --notes "Android app. It opens the live game, so the game updates itself."
+        env:
+          GH_TOKEN: ${{ github.token }}
