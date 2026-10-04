@@ -1,7 +1,7 @@
 {
   "name": "otakusekai-desktop",
   "productName": "OtakuSekai",
-  "version": "0.32.2",
+  "version": "0.33.0",
   "description": "OtakuSekai for Windows, macOS and Linux",
   "main": "src/main.cjs",
   "private": true,
