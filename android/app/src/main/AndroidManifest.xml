@@ -5,6 +5,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Lets the app see whether Chrome is installed (see MainActivity). -->
+    <queries>
+        <package android:name="com.android.chrome" />
+    </queries>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -17,7 +22,7 @@
             android:resource="@string/asset_statements" />
 
         <activity
-            android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:screenOrientation="unspecified">
@@ -41,6 +46,11 @@
                 <data android:scheme="https" android:host="play.otakuswonderland.com" />
             </intent-filter>
         </activity>
+
+        <!-- Used instead of Chrome when Chrome is missing or too old. -->
+        <activity
+            android:name="com.google.androidbrowserhelper.trusted.WebViewFallbackActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
 
         <!-- Lets the game's web push notifications show through this app. -->
         <service
