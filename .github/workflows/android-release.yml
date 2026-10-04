@@ -38,6 +38,6 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       - if: steps.v.outputs.exists == 'false'
-        run: gh release create "android-v${{ steps.v.outputs.version }}" "OtakuSekai-${{ steps.v.outputs.version }}.apk" --title "OtakuSekai for Android ${{ steps.v.outputs.version }}" --notes "Android app. It opens the live game, so the game updates itself."
+        run: gh release create "android-v${{ steps.v.outputs.version }}" --latest=false "OtakuSekai-${{ steps.v.outputs.version }}.apk" --title "OtakuSekai for Android ${{ steps.v.outputs.version }}" --notes "Android app. It opens the live game, so the game updates itself."
         env:
           GH_TOKEN: ${{ github.token }}
