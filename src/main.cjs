@@ -2,7 +2,7 @@
 // This is a LAUNCHER: it opens the live game, so every game update reaches players the moment you deploy it, with nothing to download.
 // The only thing that is ever installed again is this small launcher, and only when it becomes too old: at start-up it asks the server which launcher
 // version is still allowed (/desktop-version) and, if this one is older, shows an "update needed" screen with a download button.
-const { app, BrowserWindow, shell, Menu, Tray, dialog, ipcMain, nativeImage } = require("electron");
+const { app, BrowserWindow, shell, Menu, Tray, dialog, ipcMain, nativeImage, Notification } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -13,6 +13,9 @@ const GAME_URL = DEV ? process.env.OTAKU_URL || "http://localhost:5173" : PROD_U
 const GAME_ORIGIN = new URL(GAME_URL).origin;
 
 app.setName("OtakuSekai");
+// Windows only shows a notification from an installed app whose process carries the same identity as its Start Menu shortcut (the build's appId). Without this the
+// toast is dropped silently, which is why notifications did nothing in the Windows app.
+if (process.platform === "win32") app.setAppUserModelId("com.otakuswonderland.otakusekai");
 
 // --- remember the window between runs (a tiny json file, no extra package) ---
 const stateFile = path.join(app.getPath("userData"), "window.json");
@@ -208,6 +211,41 @@ if (!app.requestSingleInstanceLock()) {
     } catch {
       /* ignore */
     }
+  });
+  // A system notification, shown by the launcher itself. It answers with whether the system took it, so the game can tell the player what to check when it did not.
+  const liveNotifications = new Set();
+  ipcMain.handle("desktop:notify", (e, payload) => {
+    return new Promise((resolve) => {
+      try {
+        if (new URL(e.senderFrame.url).origin !== GAME_ORIGIN) return resolve({ ok: false, error: "blocked" });
+        if (!Notification.isSupported()) return resolve({ ok: false, error: "This computer does not support notifications." });
+        const id = String((payload && payload.id) || "").slice(0, 40);
+        const n = new Notification({ title: String((payload && payload.title) || "OtakuSekai").slice(0, 80), body: String((payload && payload.body) || "").slice(0, 300), silent: false });
+        liveNotifications.add(n); // keep a reference: a notification that is garbage collected never fires its click
+        let done = false;
+        const finish = (r) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve(r);
+        };
+        const timer = setTimeout(() => finish({ ok: true, unconfirmed: true }), 2500);
+        n.on("show", () => finish({ ok: true }));
+        n.on("failed", (_ev, err) => finish({ ok: false, error: String(err || "The system refused the notification.") }));
+        n.on("click", () => {
+          showWindow();
+          try {
+            if (win && !win.isDestroyed()) win.webContents.send("desktop:notification-click", id);
+          } catch {
+            /* the window is gone */
+          }
+        });
+        n.on("close", () => liveNotifications.delete(n));
+        n.show();
+      } catch (err) {
+        resolve({ ok: false, error: String(err && err.message ? err.message : err) });
+      }
+    });
   });
   ipcMain.on("desktop:show", (e) => {
     try {
